@@ -91,13 +91,12 @@ class tablemap:
         if(len(self.tableTitle)>0):
             maxlen = len(lineK)
             noplen = (maxlen-len(self.tableTitle)-4)/2
-            print noplen
             TBTitle = " "*noplen+"*"+self.tableTitle +"*"
             result += "+"+'-'*(maxlen-2)+"+" +"\n"
             result += "|"+TBTitle +" "*(maxlen-2-len(TBTitle))+"|\n"
 
         result += lineK +"\n"
-        result += self.getItemString(List,"") + "\n"
+        result += self.getItemString(List,str(len(self.itemlist))) + "\n"
 
         result += lineK +"\n"
         for item in self.itemlist:
