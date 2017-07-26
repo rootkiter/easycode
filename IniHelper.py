@@ -9,13 +9,8 @@
 
 import ConfigParser,os
 
-IniHelperLogFunction=print
-
 def LogFunction(tag,log):
-    IniHelperLogFunction("[ %5s ] %s" % (tag,log))
-
-def ResetLogFunction(function):
-    IniHelperLogFunction = function
+    print("[ %5s ] %s" % (tag,log))
 
 def LogError(log):
     LogFunction("Error",log)
@@ -68,4 +63,4 @@ if __name__=='__main__':
     ini.set('section1','key1','300')
     ini.set('section1','key2','900')
     ini.set('section5','key9','900')
-    print ini.get('section1','key2')
+    print ini.get('section9','key2')
