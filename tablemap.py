@@ -6,14 +6,19 @@
 #   Created : 2017-03-21 12:39:09
 ###############################################
 
+import json
+
 class tablemap:
     def __init__(self):
-        self.tableTitle=""
+        self.tableTitle=None
+
         self.title={}
         self.titlelist=[]
-        self.item = {}
+
         self.itemnamelen=0
         self.itemlist = []
+
+        self.item = {}
 
     def setTitle(self,title):
         self.tableTitle = title
@@ -26,111 +31,165 @@ class tablemap:
             self.item[itemname] = {}
             self.itemlist.append(itemname)
         self.item[itemname][title]=str(itemvalue)
-        if(self.title[title] < len(str(itemvalue))):
-            self.title[title] = len(str(itemvalue))
-        if(len(itemname) > self.itemnamelen):
-            self.itemnamelen = len(itemname)
+
+
+        valueMaxLen = 0
+        if len(str(itemvalue).split("\n")) > 0:
+            valueMaxLen = max([len(i)+2 for i in str(itemvalue).split("\n")])
+
+        if(self.title[title] < valueMaxLen):
+            self.title[title] = valueMaxLen
+        if(len(itemname)+2 > self.itemnamelen):
+            self.itemnamelen = len(itemname)+2
         return True
 
-    def getItemString(self,List,itemname,itemList=None):
-        result = "| "
-        if(itemList == None):
-            formatString = "%%-%ds |" % self.itemnamelen
-            result += formatString % itemname
-            for citem in List:
-                if(citem.startswith('-')):
-                    item = citem[1::]
-                    formatString = " %%-%ds |" % self.title[item]
-                    itembuf = (((self.title[item] - len(item))/2)*' ')+item
-                    result += formatString % (itembuf)
-                else:
-                    item = citem
-                    formatString = " %%%ds |" % self.title[item]
-                    itembuf = item+(((self.title[item] - len(item))/2)*' ')
-                    result += formatString % (itembuf)
-        else:
-            formatString = "%%-%ds |" % self.itemnamelen
-            result += formatString % itemname
-            for citem in List:
-                if(citem.startswith('-')):
-                    item = citem[1::]
-                    formatString = " %%-%ds |" % self.title[item]
-                else:
-                    item = citem
-                    formatString = " %%%ds |" % self.title[item]
-                try:
-                    result += formatString % str(itemList[item])
-                except Exception, e:
-                    result += formatString % ""
-        return result
+    def getTblen( self ):
+        blenList = [self.itemnamelen]
+        tblen    = self.itemnamelen
+        for tname in self.title:
+            blenList.append(self.title[tname])
+            tblen+=self.title[tname]
+        return tblen+len(blenList)-1
+
+
+    def getFormatString( self, nameList, splitchr = '+' ):
+        fmtList = ['',('%%-%ds' % self.itemnamelen)]
+        for citem in nameList:
+            item = citem
+            if citem.startswith('-'):
+                item = citem[1::]
+            fmtList.append("%%-%ds" % self.title[item])
+        fmtList.append('')
+        return splitchr.join(fmtList)
+
+    def getFormLine( self, nameList ):
+        formFormat  = self.getFormatString (nameList, '+')
+        formValue = ['-'*self.itemnamelen]
+        for name in nameList:
+            item = name
+            if name.startswith('-'):
+                item = name[1::]
+            formValue.append('-'*self.title[item])
+        return formFormat % tuple(formValue)
+
+    def getTitleValue( self, nameList ):
+        numstr = str(len(self.item))
+        numoff = int((self.itemnamelen - len(numstr))/2)
+        titleValue = [ ' '*(numoff) + numstr ]
+        for item in nameList:
+            name = item
+            if item.startswith('-'):
+                name = item[1::]
+            tlen = self.title[name]
+            off  = int((tlen - len(name)) / 2)
+            titleValue.append(' '*(off)+name)
+        return titleValue
+
+    def getItemValueList( self, itemname, nameList ):
+        valueList = [[" "+itemname]]
+        maxline = 0
+        for name in nameList:
+            item = name
+            reverse = False
+            if name.startswith('-'):
+                item=name[1::]
+                reverse = True
+            value = self.item[itemname][item]
+            totlen = self.title[item]
+            vlist = []
+            countline = 0
+            for line in value.split('\n'):
+                off = 0
+                if reverse :
+                    off = totlen - len(line)-2
+                vlist.append(' '*(off+1)+line)
+                countline += 1
+            valueList.append(vlist)
+            if countline> maxline:
+                maxline = countline
+        return maxline,valueList
 
     def printMap(self,titleList=None):
-        result = ""
-        formatString = "| "
-        lineK        = "+-"
-        List = []
-        if(titleList == None):
-            List = self.titlelist
-        else:
-            List = titleList
+        result = []
+        if titleList == None:
+            titleList = self.titlelist
+        valueFormat = self.getFormatString(titleList, '|')
+        formLine    = self.getFormLine(titleList)
 
-        for item in List:
-            if(item.replace('-','') not in self.titlelist):
-                return ""
-        formatString += "%%%ds |" % self.itemnamelen
-        lineK += self.itemnamelen*'-' + "-+"
-        for citem in List:
-            if(citem.startswith('-')):
-                item=citem[1::]
-                formatString += " %%-%ds |" % self.title[item]
-            else:
-                item=citem
-                formatString += " %%%ds |" % self.title[item]
-            lineK += "-"+ self.title[item]*'-' + "-+"
-
-        if(len(self.tableTitle)>0):
-            maxlen = len(lineK)
-            noplen = (maxlen-len(self.tableTitle)-4)/2
-            TBTitle = " "*noplen+"*"+self.tableTitle +"*"
-            result += "+"+'-'*(maxlen-2)+"+" +"\n"
-            result += "|"+TBTitle +" "*(maxlen-2-len(TBTitle))+"|\n"
-
-        result += lineK +"\n"
-        result += self.getItemString(List,str(len(self.itemlist))) + "\n"
-
-        result += lineK +"\n"
-        for item in self.itemlist:
-            try:
-                result += self.getItemString(List,item,self.item[item]) +"\n"
-            except Exception, e:
-                str(e)
-        result += lineK +"\n"
-        return result
+        if self.tableTitle != None:
+            spaceNum = self.getTblen()
+            result.append("+"+spaceNum*'-'+"+")
+            toff = int((spaceNum - len(self.tableTitle))/2)
+            tformat = "|%%-%ds|" % spaceNum
+            result.append(tformat % (toff*' '+self.tableTitle))
+        result.append(formLine)
+        result.append(valueFormat % tuple(self.getTitleValue( titleList )))
+        result.append(formLine)
+        formLineFlag = False
+        for itemname in self.itemlist:
+            if formLineFlag:
+                result.append(formLine)
+                formLineFlag = False
+            lineNum, valueList = self.getItemValueList( itemname, titleList )
+            for i in range(lineNum):
+                curvalue = []
+                for k in valueList:
+                    if len(k)>i:
+                        curvalue.append(k[i])
+                    else:
+                        curvalue.append(' ')
+                result.append(valueFormat % tuple(curvalue))
+            if lineNum>1:
+                formLineFlag = True
+        result.append(formLine)
+        return "\n".join(result)
 
 import sys
 if __name__=='__main__':
     tbmap = tablemap()
-    tbmap.additem("title1",'item1',"Hello 1*1")
-    tbmap.additem("title2",'item1',"Hello 1*2 AAAAA")
+    #tbmap.additem("title1",'item1',"Hello 1*1")
+    #tbmap.additem("title2",'item1',"Hello 1*2 AAAAA")
+    #tbmap.additem("title1",'item2',"Hello 2*1 BBBBB")
+    #tbmap.additem("title2",'item2',"Hello 2*2")
+    #'''
+    #+-------+-----------------+-----------------+
+    #|       |      title1     |      title2     |
+    #+-------+-----------------+-----------------+
+    #| item1 |       Hello 1*1 | Hello 1*2 AAAAA |
+    #| item2 | Hello 2*1 BBBBB |       Hello 2*2 |
+    #+-------+-----------------+-----------------+
+    #'''
+    #print (tbmap.printMap())
+#############################################################
+    #'''
+    #+-------+-----------------+-----------------+
+    #|       |      title2     |     title1      |
+    #+-------+-----------------+-----------------+
+    #| item1 | Hello 1*2 AAAAA | Hello 1*1       |
+    #| item2 |       Hello 2*2 | Hello 2*1 BBBBB |
+    #+-------+-----------------+-----------------+
+    #'''
+    #tbmap.setTitle("Hello Table")
+    #print (tbmap.printMap(['title2','-title1']))
+
+    payload = {
+        "crc32": 0x3ad60a53,
+        "cmd_code": 3,
+        "duation": 10,
+        "sip_low": 0,
+        "sip_high": 0,
+        "cmd_body":[{
+            "dip": "1.1.1.1",
+            "dport": 53,
+            "domain": "dns.google.com",
+            "atk_type": 4,
+            "fake_sip": "10.0.0.1",
+            "payload_size": 0x100
+        }]
+    }
+    tbmap.setTitle("Hello Table")
     tbmap.additem("title1",'item2',"Hello 2*1 BBBBB")
     tbmap.additem("title2",'item2',"Hello 2*2")
-    '''
-    +-------+-----------------+-----------------+
-    |       |      title1     |      title2     |
-    +-------+-----------------+-----------------+
-    | item1 |       Hello 1*1 | Hello 1*2 AAAAA |
-    | item2 | Hello 2*1 BBBBB |       Hello 2*2 |
-    +-------+-----------------+-----------------+
-    '''
-    print tbmap.printMap()
-############################################################
-    '''
-    +-------+-----------------+-----------------+
-    |       |      title2     |     title1      |
-    +-------+-----------------+-----------------+
-    | item1 | Hello 1*2 AAAAA | Hello 1*1       |
-    | item2 |       Hello 2*2 | Hello 2*1 BBBBB |
-    +-------+-----------------+-----------------+
-    '''
-    tbmap.setTitle("Hello Table")
-    print tbmap.printMap(['title2','-title1'])
+    tbmap.additem("title1", "item1", "DNS")
+    tbmap.additem("title2", "item1", json.dumps(payload, indent = 4))
+    print(tbmap.printMap(['title2', 'title1']))
